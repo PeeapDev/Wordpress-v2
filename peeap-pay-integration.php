@@ -13,7 +13,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Include necessary files
 require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-api.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
 
 // Initialize the plugin
 function peeap_pay_init() {
@@ -44,7 +43,7 @@ add_action( 'admin_menu', 'peeap_pay_add_admin_menu' );
 
 // Callback function to display settings page
 function peeap_pay_settings_page() {
-    require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
+    include plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
 }
 
 // Shortcode to display the payment button
@@ -72,3 +71,6 @@ function peeap_pay_payment_button( $atts ) {
 }
 add_shortcode( 'peeap_pay_button', 'peeap_pay_payment_button' );
 ?>
+Last edited just now
+
+

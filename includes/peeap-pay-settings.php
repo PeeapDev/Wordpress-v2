@@ -1,71 +1,73 @@
 <?php
-// Prevent direct access
+/*
+Plugin Name: Peeap Pay Integration
+Description: Integrates Peeap Pay API for payments on your WordPress site.
+Version: 2.1
+Author: Mohamed Abdul Kabia
+*/
+
+// Prevent direct access to the file
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Save settings when submitted
-if ( isset($_POST['peeap_pay_save_settings']) ) {
-    update_option('peeap_pay_client_id', sanitize_text_field($_POST['peeap_pay_client_id']));
-    update_option('peeap_pay_secret_id', sanitize_text_field($_POST['peeap_pay_secret_id']));
-    update_option('peeap_pay_mode', sanitize_text_field($_POST['peeap_pay_mode']));
-    echo '<div class="updated"><p>Settings saved.</p></div>';
+// Include necessary files
+require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-api.php';
+
+// Initialize the plugin
+function peeap_pay_init() {
+    // Plugin initialization logic here
+}
+add_action( 'plugins_loaded', 'peeap_pay_init' );
+
+// Load plugin assets
+function peeap_pay_enqueue_scripts() {
+    wp_enqueue_style( 'peeap-pay-style', plugin_dir_url( __FILE__ ) . 'assets/css/admin.css' );
+    wp_enqueue_script( 'peeap-pay-script', plugin_dir_url( __FILE__ ) . 'assets/js/admin.js', array('jquery'), null, true );
+}
+add_action( 'admin_enqueue_scripts', 'peeap_pay_enqueue_scripts' );
+
+// Add menu to WordPress admin sidebar
+function peeap_pay_add_admin_menu() {
+    add_menu_page(
+        'Peeap Pay Settings',
+        'Peeap Pay',
+        'manage_options',
+        'peeap-pay-settings',
+        'render_peeap_pay_settings_page', // Changed function name
+        'dashicons-money',
+        56
+    );
+}
+add_action( 'admin_menu', 'peeap_pay_add_admin_menu' );
+
+// Simple wrapper function to include the settings page
+function render_peeap_pay_settings_page() {
+    require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
 }
 
-// Retrieve saved settings
-$client_id = get_option('peeap_pay_client_id', '');
-$secret_id = get_option('peeap_pay_secret_id', '');
-$mode = get_option('peeap_pay_mode', 'sandbox');
-?>
+// Shortcode to display the payment button
+function peeap_pay_payment_button( $atts ) {
+    $atts = shortcode_atts( [
+        'amount' => '10.00',
+        'currency' => 'USD',
+        'return_url' => site_url( '/payment-success' ),
+        'cancel_url' => site_url( '/payment-cancel' ),
+    ], $atts );
 
-<div class="wrap">
-    <h1>Peeap Pay Integration Settings</h1>
-    <form method="post" action="">
-        <table class="form-table">
-            <tr>
-                <th>Client ID:</th>
-                <td><input type="text" name="peeap_pay_client_id" value="<?php echo esc_attr($client_id); ?>" class="regular-text"></td>
-            </tr>
-            <tr>
-                <th>Secret ID:</th>
-                <td><input type="text" name="peeap_pay_secret_id" value="<?php echo esc_attr($secret_id); ?>" class="regular-text"></td>
-            </tr>
-            <tr>
-                <th>Mode:</th>
-                <td>
-                    <label for="peeap-pay-toggle">
-                        <input type="checkbox" id="peeap-pay-toggle" name="peeap_pay_mode" value="live" <?php checked($mode, 'live'); ?>>
-                        Live Mode
-                    </label>
-                    <label for="peeap-pay-toggle">
-                        <input type="checkbox" id="peeap-pay-toggle-sandbox" name="peeap_pay_mode" value="sandbox" <?php checked($mode, 'sandbox'); ?>>
-                        Sandbox Mode
-                    </label>
-                </td>
-            </tr>
-        </table>
-        <input type="submit" name="peeap_pay_save_settings" value="Save Settings" class="button button-primary">
-    </form>
-</div>
+    $client_id = get_option( 'peeap_pay_client_id' );
+    $secret_id = get_option( 'peeap_pay_secret_id' );
+    $mode = get_option( 'peeap_pay_mode' );
+    
+    $api = new Peeap_Pay_API( $client_id, $secret_id, $mode );
 
-<script>
-    // JavaScript to handle border color change based on mode
-    const modeToggle = document.getElementById('peeap-pay-toggle');
-    const sandboxToggle = document.getElementById('peeap-pay-toggle-sandbox');
-    const clientIdInput = document.querySelector('input[name="peeap_pay_client_id"]');
-    const secretIdInput = document.querySelector('input[name="peeap_pay_secret_id"]');
+    $response = $api->initiate_payment( $atts['amount'], $atts['currency'], $atts['return_url'], $atts['cancel_url'] );
 
-    function updateBorderColor() {
-        if (modeToggle.checked) {
-            clientIdInput.style.borderColor = "green";
-            secretIdInput.style.borderColor = "green";
-        } else if (sandboxToggle.checked) {
-            clientIdInput.style.borderColor = "yellow";
-            secretIdInput.style.borderColor = "yellow";
-        }
+    if ( isset( $response['data']['payment_url'] ) ) {
+        return '<a href="' . esc_url( $response['data']['payment_url'] ) . '" class="peeap-pay-button">Pay Now</a>';
+    } else {
+        return 'Payment initiation failed.';
     }
-
-    // Call the function on page load
-    updateBorderColor();
-</script>
-// The code snippet above is a settings page for the Peeap Pay plugin. The settings page allows the user to input their client ID, secret ID, and choose between live and sandbox mode. The settings are saved when the form is submitted.
+}
+add_shortcode( 'peeap_pay_button', 'peeap_pay_payment_button' );
+?>
