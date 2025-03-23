@@ -13,6 +13,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Include necessary files
 require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-api.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
+
+// Add a menu item to the WordPress admin menu
+function peeap_pay_add_admin_menu() {
+    add_menu_page( 
+        'Peeap Pay Settings', 
+        'Peeap Pay', 
+        'manage_options', 
+        'peeap-pay-settings', 
+        'peeap_pay_settings_page', 
+        'dashicons-admin-generic', 
+        50
+    );
+}
+add_action( 'admin_menu', 'peeap_pay_add_admin_menu' );
 
 // Initialize the plugin
 function peeap_pay_init() {
@@ -26,25 +41,6 @@ function peeap_pay_enqueue_scripts() {
     wp_enqueue_script( 'peeap-pay-script', plugin_dir_url( __FILE__ ) . 'assets/js/admin.js', array('jquery'), null, true );
 }
 add_action( 'admin_enqueue_scripts', 'peeap_pay_enqueue_scripts' );
-
-// Add menu to WordPress admin sidebar
-function peeap_pay_add_admin_menu() {
-    add_menu_page(
-        'Peeap Pay Settings',
-        'Peeap Pay',
-        'manage_options',
-        'peeap-pay-settings',
-        'peeap_pay_settings_page',
-        'dashicons-money',
-        56
-    );
-}
-add_action( 'admin_menu', 'peeap_pay_add_admin_menu' );
-
-// Callback function to display settings page
-function peeap_pay_settings_page() {
-    include plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
-}
 
 // Shortcode to display the payment button
 function peeap_pay_payment_button( $atts ) {
@@ -70,7 +66,3 @@ function peeap_pay_payment_button( $atts ) {
     }
 }
 add_shortcode( 'peeap_pay_button', 'peeap_pay_payment_button' );
-?>
-Last edited just now
-
-

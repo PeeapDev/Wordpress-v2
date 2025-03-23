@@ -1,73 +1,116 @@
 <?php
-/*
-Plugin Name: Peeap Pay Integration
-Description: Integrates Peeap Pay API for payments on your WordPress site.
-Version: 2.1
-Author: Mohamed Abdul Kabia
-*/
 
-// Prevent direct access to the file
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+// Display the plugin settings page
+function peeap_pay_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1>Peeap Pay Settings</h1>
+        <form method="post" action="options.php">
+            <?php
+            settings_fields( 'peeap_pay_settings_group' );
+            do_settings_sections( 'peeap-pay-settings' );
+            ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Client ID</th>
+                    <td><input type="text" name="peeap_pay_client_id" value="<?php echo esc_attr( get_option( 'peeap_pay_client_id' ) ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row">Secret ID</th>
+                    <td><input type="text" name="peeap_pay_secret_id" value="<?php echo esc_attr( get_option( 'peeap_pay_secret_id' ) ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row">Payment Mode</th>
+                    <td>
+                        <label for="peeap_pay_mode" class="switch">
+                            <input type="checkbox" name="peeap_pay_mode" id="peeap_pay_mode" value="live" <?php checked( 'live', get_option( 'peeap_pay_mode' ) ); ?>>
+                            <span class="slider"></span> 
+                            <span id="mode-label"><?php echo ( get_option( 'peeap_pay_mode' ) === 'live' ) ? 'Live' : 'Sandbox'; ?></span>
+                        </label>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
 }
 
-// Include necessary files
-require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-api.php';
-
-// Initialize the plugin
-function peeap_pay_init() {
-    // Plugin initialization logic here
+// Register settings
+function peeap_pay_register_settings() {
+    register_setting( 'peeap_pay_settings_group', 'peeap_pay_client_id' );
+    register_setting( 'peeap_pay_settings_group', 'peeap_pay_secret_id' );
+    register_setting( 'peeap_pay_settings_group', 'peeap_pay_mode' );
 }
-add_action( 'plugins_loaded', 'peeap_pay_init' );
+add_action( 'admin_init', 'peeap_pay_register_settings' );
 
-// Load plugin assets
-function peeap_pay_enqueue_scripts() {
-    wp_enqueue_style( 'peeap-pay-style', plugin_dir_url( __FILE__ ) . 'assets/css/admin.css' );
-    wp_enqueue_script( 'peeap-pay-script', plugin_dir_url( __FILE__ ) . 'assets/js/admin.js', array('jquery'), null, true );
+// Add the toggle CSS
+function peeap_pay_admin_styles() {
+    ?>
+    <style>
+        /* Toggle switch styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+           
+            width: 58px;
+            height: 34px;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }   
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+        }
+        .slider.round {
+            border-radius: 34px;
+        }
+            .slider.round:before {
+                border-radius: 50%;
+            }       
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+        input:checked + .slider:before {
+            -webkit-transform: translateX(26px);
+            -ms-transform: translateX(26px);
+            transform: translateX(26px);
+        }
+        /* Rounded sliders */
+        .slider.round {
+            border-radius: 34px;
+        }
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    </style>
+    <?php
 }
-add_action( 'admin_enqueue_scripts', 'peeap_pay_enqueue_scripts' );
-
-// Add menu to WordPress admin sidebar
-function peeap_pay_add_admin_menu() {
-    add_menu_page(
-        'Peeap Pay Settings',
-        'Peeap Pay',
-        'manage_options',
-        'peeap-pay-settings',
-        'render_peeap_pay_settings_page', // Changed function name
-        'dashicons-money',
-        56
-    );
-}
-add_action( 'admin_menu', 'peeap_pay_add_admin_menu' );
-
-// Simple wrapper function to include the settings page
-function render_peeap_pay_settings_page() {
-    require_once plugin_dir_path( __FILE__ ) . 'includes/peeap-pay-settings.php';
-}
-
-// Shortcode to display the payment button
-function peeap_pay_payment_button( $atts ) {
-    $atts = shortcode_atts( [
-        'amount' => '10.00',
-        'currency' => 'USD',
-        'return_url' => site_url( '/payment-success' ),
-        'cancel_url' => site_url( '/payment-cancel' ),
-    ], $atts );
-
-    $client_id = get_option( 'peeap_pay_client_id' );
-    $secret_id = get_option( 'peeap_pay_secret_id' );
-    $mode = get_option( 'peeap_pay_mode' );
-    
-    $api = new Peeap_Pay_API( $client_id, $secret_id, $mode );
-
-    $response = $api->initiate_payment( $atts['amount'], $atts['currency'], $atts['return_url'], $atts['cancel_url'] );
-
-    if ( isset( $response['data']['payment_url'] ) ) {
-        return '<a href="' . esc_url( $response['data']['payment_url'] ) . '" class="peeap-pay-button">Pay Now</a>';
-    } else {
-        return 'Payment initiation failed.';
-    }
-}
-add_shortcode( 'peeap_pay_button', 'peeap_pay_payment_button' );
-?>
+add_action( 'admin_head', 'peeap_pay_admin_styles' );   
+        
